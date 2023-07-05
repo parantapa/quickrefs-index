@@ -148,13 +148,7 @@ def get_files_to_parse(workdir: Optional[str]) -> list[str]:
     return ofnames
 
 
-@click.group()
-def quickrefs_index():
-    """Quick reference index."""
-
-
-@quickrefs_index.command()
-@click.option(
+opt_workdir = click.option(
     "-C",
     "--chdir",
     "workdir",
@@ -162,14 +156,42 @@ def quickrefs_index():
     type=click.Path(exists=True, file_okay=False, dir_okay=True),
     help="If provided switch to this directory first.",
 )
-@click.option(
+
+opt_ofname = click.option(
     "-o",
     "--output",
     "ofname",
     default="index.json",
     show_default=True,
-    help="The file to which the headings and references data will be written.",
+    help="Index file.",
 )
+
+opt_ifname = click.option(
+    "-h",
+    "--index-file",
+    "ifname",
+    default="index.json",
+    show_default=True,
+    help="Index file.",
+)
+
+opt_color = click.option(
+    "-c",
+    "--color",
+    is_flag=True,
+    show_default=True,
+    help="Force color output",
+)
+
+
+@click.group()
+def quickrefs_index():
+    """Quick reference index."""
+
+
+@quickrefs_index.command()
+@opt_workdir
+@opt_ofname
 def build(workdir, ofname):
     """Build the index."""
     fnames = get_files_to_parse(workdir)
@@ -181,23 +203,10 @@ def build(workdir, ofname):
 
 
 @quickrefs_index.command()
-@click.option(
-    "-h",
-    "--index-file",
-    "ifname",
-    default="index.json",
-    show_default=True,
-    help="Index file.",
-)
-@click.option(
-    "-c",
-    "--color",
-    is_flag=True,
-    show_default=True,
-    help="Force color output",
-)
+@opt_ifname
+@opt_color
 def heading_jumplist(ifname, color):
-    """Print all headings with file and line."""
+    """Print the heading jumplist."""
     index = Index.load(ifname)
 
     if not color:
@@ -211,16 +220,9 @@ def heading_jumplist(ifname, color):
 
 
 @quickrefs_index.command()
-@click.option(
-    "-h",
-    "--index-file",
-    "ifname",
-    default="index.json",
-    show_default=True,
-    help="Index file.",
-)
+@opt_ifname
 def print_all_headings(ifname):
-    """Print all headings with file and line."""
+    """Print all headings."""
     index = Index.load(ifname)
 
     for h in index.headings:
@@ -229,17 +231,10 @@ def print_all_headings(ifname):
 
 
 @quickrefs_index.command()
-@click.option(
-    "-h",
-    "--index-file",
-    "ifname",
-    default="index.json",
-    show_default=True,
-    help="Index file.",
-)
+@opt_ifname
 @click.argument("heading")
 def jump_to_heading(ifname, heading):
-    """Print filename and line for the given heading."""
+    """Print the jumplist for given heading."""
     index = Index.load(ifname)
 
     for h in index.headings:
@@ -248,23 +243,10 @@ def jump_to_heading(ifname, heading):
 
 
 @quickrefs_index.command()
-@click.option(
-    "-h",
-    "--index-file",
-    "ifname",
-    default="index.json",
-    show_default=True,
-    help="Index file.",
-)
-@click.option(
-    "-c",
-    "--color",
-    is_flag=True,
-    show_default=True,
-    help="Force color output",
-)
+@opt_ifname
+@opt_color
 def deadline_jumplist(ifname, color):
-    """Print all deadlines with file and line."""
+    """Print the deadline jumplist"""
     index = Index.load(ifname)
 
     if not color:
@@ -283,23 +265,10 @@ def deadline_jumplist(ifname, color):
 
 
 @quickrefs_index.command()
-@click.option(
-    "-h",
-    "--index-file",
-    "ifname",
-    default="index.json",
-    show_default=True,
-    help="Index file.",
-)
-@click.option(
-    "-c",
-    "--color",
-    is_flag=True,
-    show_default=True,
-    help="Force color output",
-)
+@opt_ifname
+@opt_color
 def todo_jumplist(ifname, color):
-    """Print all todos with file and line."""
+    """Print the todo jumplist."""
     index = Index.load(ifname)
 
     if not color:
