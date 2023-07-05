@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quickrefs-index"
+version = "1.0"
+authors = [
+  { name="Parantapa Bhattacharya", email="pb+pypi@parantapa.net" },
+]
+description = "Quick reference index."
+readme = "README.rst"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "click",
+    "python-dateutil",
+    "attrs",
+    "cattrs"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/parantapa/quickrefs-index"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+quickrefs-index = "quickrefs_index:quickrefs_index"
