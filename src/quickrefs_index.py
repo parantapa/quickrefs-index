@@ -4,6 +4,7 @@ A quick reference folder contains RST files with some extra annotations.
 """
 
 from __future__ import annotations
+from datetime import datetime
 
 import os
 import re
@@ -255,11 +256,12 @@ def deadline_jumplist(ifname, color):
     for d in sorted(index.deadlines, key=lambda h: parse(h.when)):
         line = click.style(d.line, fg="green")
         fname = click.style(d.file, fg="yellow")
+        days = (parse(d.when) - datetime.today()).days
         if d.section is None:
-            label = f"{d.when}: {d.what}"
+            label = f"{d.when} ({days}d): {d.what}"
         else:
             heading = click.style(d.section.heading, fg="cyan")
-            label = f"{heading}: {d.when}: {d.what}"
+            label = f"{heading}: {d.when} ({days}d): {d.what}"
 
         click.echo(f"{label}\t{fname}\t{line}", color=color)
 
