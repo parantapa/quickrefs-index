@@ -20,8 +20,7 @@ classifiers = [
 dependencies = [
     "click",
     "python-dateutil",
-    "attrs",
-    "cattrs"
+    "pydantic",
 ]
 
 [project.urls]

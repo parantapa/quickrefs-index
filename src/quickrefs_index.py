@@ -4,78 +4,65 @@ A quick reference folder contains RST files with some extra annotations.
 """
 
 from __future__ import annotations
-from datetime import datetime
 
-import os
 import re
 import sys
-import json
+from pathlib import Path
+from datetime import datetime
 from itertools import pairwise
-from typing import Optional
 
 import click
-from attrs import define
-from cattrs import unstructure, structure
+from pydantic import BaseModel, Field
 from dateutil.parser import parse
 
 HEADING_CHARS = set("= - ` ' . ~ * + ^".split())
 
 
-@define
-class Heading:
+class Heading(BaseModel):
     file: str
     line: int
     heading: str
     level: str
 
 
-@define
-class Reference:
+class Reference(BaseModel):
     file: str
     line: int
     reference: str
-    section: Optional[Heading]
+    section: Heading | None
 
 
-@define
-class Deadline:
+class Deadline(BaseModel):
     file: str
     line: int
     what: str
     when: str
-    section: Optional[Heading]
+    section: Heading | None
 
 
-@define
-class Todo:
+class Todo(BaseModel):
     file: str
     line: int
     what: str
-    section: Optional[Heading]
+    section: Heading | None
 
 
-@define
-class Index:
-    headings: list[Heading] = []
-    references: list[Reference] = []
-    deadlines: list[Deadline] = []
-    todos: list[Todo] = []
+class Index(BaseModel):
+    headings: list[Heading] = Field(default_factory=list)
+    references: list[Reference] = Field(default_factory=list)
+    deadlines: list[Deadline] = Field(default_factory=list)
+    todos: list[Todo] = Field(default_factory=list)
 
-    def save(self, fname: str):
-        with open(fname, "wt") as fobj:
-            d = unstructure(self)
-            json.dump(d, fobj)
+    def save(self, fname: Path):
+        fname.write_text(self.model_dump_json())
 
     @classmethod
-    def load(cls, fname: str) -> Index:
+    def load(cls, fname: Path) -> Index:
         try:
-            with open(fname, "rt") as fobj:
-                index = json.load(fobj)
+            return cls.model_validate_json(fname.read_text())
         except OSError as e:
             print(f"Error opening {fname}: {e}", file=sys.stderr)
             return cls()
-        index = structure(index, cls)
-        return index
 
 
 def is_heading(curl: str, nextl: str) -> bool:
@@ -98,7 +85,7 @@ def is_heading(curl: str, nextl: str) -> bool:
     return False
 
 
-def parse_file(file: str, index: Index) -> None:
+def parse_file(file: Path, index: Index) -> None:
     """Parse a given file."""
     ref_pattern = re.compile(r"`(.*?)`_")
     dl_pattern = re.compile(r":deadline:`(.*?)`")
@@ -109,14 +96,14 @@ def parse_file(file: str, index: Index) -> None:
         for i, (curl, nextl) in enumerate(pairwise(fobj), 1):
             if is_heading(curl, nextl):
                 cur_heading = Heading(
-                    file=file, line=i, heading=curl.strip(), level=nextl[0]
+                    file=str(file), line=i, heading=curl.strip(), level=nextl[0]
                 )
                 index.headings.append(cur_heading)
                 continue
 
             for ref in ref_pattern.findall(curl):
                 ref = Reference(
-                    file=file, line=i, reference=ref.strip(), section=cur_heading
+                    file=str(file), line=i, reference=ref.strip(), section=cur_heading
                 )
                 index.references.append(ref)
 
@@ -124,26 +111,30 @@ def parse_file(file: str, index: Index) -> None:
                 when, what = dl.split(":", maxsplit=1)
                 when, what = when.strip(), what.strip()
                 dl = Deadline(
-                    file=file, line=i, when=when, what=what, section=cur_heading
+                    file=str(file), line=i, when=when, what=what, section=cur_heading
                 )
                 index.deadlines.append(dl)
 
             for todo in todo_pattern.findall(curl):
-                todo = Todo(file=file, line=i, what=todo.strip(), section=cur_heading)
+                todo = Todo(
+                    file=str(file), line=i, what=todo.strip(), section=cur_heading
+                )
                 index.todos.append(todo)
 
 
-def get_files_to_parse(workdir: Optional[str]) -> list[str]:
+def get_files_to_parse(workdir: Path | None) -> list[Path]:
     """Get the files to parse."""
-    ofnames: list[str] = []
+    ofnames: list[Path] = []
 
-    if workdir is not None:
-        os.chdir(workdir)
+    if workdir is None:
+        workdir = Path.cwd()
 
-    for root, _, fnames in os.walk("."):
-        for fname in fnames:
+    dirpath: Path
+    filenames: list[str]
+    for dirpath, _, filenames in workdir.walk():
+        for fname in filenames:
             if fname.endswith(".rst"):
-                ofnames.append(os.path.join(root, fname))
+                ofnames.append(dirpath / fname)
 
     ofnames = sorted(set(ofnames))
     return ofnames
@@ -154,7 +145,7 @@ opt_workdir = click.option(
     "--chdir",
     "workdir",
     default=None,
-    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
     help="If provided switch to this directory first.",
 )
 
@@ -163,6 +154,7 @@ opt_ofname = click.option(
     "--output",
     "ofname",
     default="index.json",
+    type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=Path),
     show_default=True,
     help="Index file.",
 )
@@ -172,6 +164,7 @@ opt_ifname = click.option(
     "--index-file",
     "ifname",
     default="index.json",
+    type=click.Path(exists=False, file_okay=True, dir_okay=False, path_type=Path),
     show_default=True,
     help="Index file.",
 )
